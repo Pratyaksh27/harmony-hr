@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import '../App.css'; // reuse existing styles
+import { startDisputeResolution } from '../api/startDispute';
 
 function ApplicationForm() {
   const [employeeId, setEmployeeId] = useState('');
@@ -17,26 +18,16 @@ function ApplicationForm() {
       witness_id: witnessId || null
     };
 
-    try{
-      const response = await fetch('http://localhost:8000/start_dispute_resolution', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to start dispute resolution process');
-      }
-
-      const data = await response.json();
-      console.log('Dispute started successfully:', data);
+    try {
+      const response = await startDisputeResolution(payload);
+      console.log('Case started successfully:', response);
     } catch (error) {
-      console.error('Error submitting case:', error);
-      alert(`Error starting dispute resolution process. Please try again. ${error}`);
+      console.error('ApplicationFrom.ts: Error starting case:', error);
+      alert('ApplicationFrom.ts: Failed to start case. Please try again.');
     }
   };
+
+ 
 
   return (
     <form className="form-card" onSubmit={handleSubmit}>
