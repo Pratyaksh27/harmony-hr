@@ -6,10 +6,36 @@ function ApplicationForm() {
   const [otherPartyId, setOtherPartyId] = useState('');
   const [witnessId, setWitnessId] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Submitting case:', { employeeId, otherPartyId, witnessId });
     // TODO: call backend API
+
+    const payload = {
+      employee_id: employeeId,
+      other_party_id: otherPartyId,
+      witness_id: witnessId || null
+    };
+
+    try{
+      const response = await fetch('http://localhost:8000/start_dispute_resolution', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start dispute resolution process');
+      }
+
+      const data = await response.json();
+      console.log('Dispute started successfully:', data);
+    } catch (error) {
+      console.error('Error submitting case:', error);
+      alert(`Error starting dispute resolution process. Please try again. ${error}`);
+    }
   };
 
   return (
