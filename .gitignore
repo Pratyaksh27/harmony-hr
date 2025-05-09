@@ -4,8 +4,11 @@
 .env.*
 
 # --- PYTHON BACKEND ---
+backend/.env/
+backend/.env.*
 backend/venv/
 __pycache__/
+venv/
 *.pyc
 *.pyo
 *.pyd
