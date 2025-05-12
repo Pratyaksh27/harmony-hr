@@ -8,8 +8,9 @@ from pydantic import BaseModel
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-ORCHESTRATOR_AGENT_CACHE_FILE = "orchestrator_assistant_cache.json"
+ASSISTANT_CACHE_DIR = os.path.join(os.path.dirname(__file__), "agent_cache")
+os.makedirs(ASSISTANT_CACHE_DIR, exist_ok=True)
+# Cache file for the orchestrator agent
 
 # ---------------------------
 # 1. Input Model
@@ -33,42 +34,35 @@ def connect_to_hr_voice_agent(report_id: str, employee_id: str):
 # 3. Register or Load Assistant
 # ---------------------------
 def get_or_create_orchestrator_agent():
-    if os.path.exists(ORCHESTRATOR_AGENT_CACHE_FILE):
-        with open(ORCHESTRATOR_AGENT_CACHE_FILE, "r") as f:
-            return json.load(f)["orchestrator_agent_id"]
-    orchestrator_agent = client.beta.assistants.create(
-        name="Orchestrator",
-        description="An assistant that orchestrates the dispute resolution process. When given a report ID and employee IDs," \
-        "it will connect the requesting employee to the voice HR agent",
-        model="gpt-4-turbo",
-        tools=[
-            {
-                "type": "function",
-                "function": {
-                    "name": "connect_to_hr_voice_agent",
-                    "description": "Connects the employee to the HR voice agent for dispute resolution.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "report_id": {
-                                "type": "string",
-                                "description": "The report ID for the dispute resolution.",
+    return get_or_create_agent(
+        role="orchestrator",
+        agent_config={
+            "name": "Orchestrator Agent",
+            "description": (
+                "Orchestrates the dispute resolution process."
+                "When given a report ID and employee IDs, it will connect the requesting employee to the voice HR agent."
+            ),
+            "model": "gpt-4-turbo",
+            "tools": [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "connect_to_hr_voice_agent",
+                        "description": "Connects the employee to the HR voice agent",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "report_id": {"type": "string"},
+                                "employee_id": {"type": "string"}
                             },
-                            "employee_id": {
-                                "type": "string",
-                                "description": "The employee ID to connect to the HR voice agent.",
-                            },
-                        },
-                        "required": ["report_id", "employee_id"],
-                    },
-                },
-            },
-        ],
+                            "required": ["report_id", "employee_id"]
+                        }
+                    }
+                }
+            ],
+        },
     )
-    with open(ORCHESTRATOR_AGENT_CACHE_FILE, "w") as f:
-        json.dump({"orchestrator_agent_id": orchestrator_agent.id}, f)
     
-    return orchestrator_agent.id
 
 # ---------------------------
 # 4. Main Orchestration Logic
@@ -130,3 +124,28 @@ async def orchestrate_dispute_resolution(dispute_request: EmployeeDisputeResolut
         "status": "completed",
         "message": "Connected to HR voice agent successfully.",
     }
+
+
+# ------------------------------------
+# 3. Register or Load a new Assistant
+# ------------------------------------
+
+def get_or_create_agent(role:str, agent_config:dict):
+    """
+    Get or create an assistant agent.
+    """
+    # Check if the agent already exists
+    agent_cache_file = os.path.join(ASSISTANT_CACHE_DIR, f"{role}.json")
+    if os.path.exists(agent_cache_file):
+        with open(agent_cache_file, "r") as f:
+            agent = json.load(f)
+        return agent["assistant_id"]
+    
+    # Create a new agent
+    agent = client.beta.assistants.create(**agent_config)
+    
+    # Save the assistant to the cache
+    with open(agent_cache_file, "w") as f:
+        json.dump({"assistant_id":agent.id}, f)
+    
+    return agent.id

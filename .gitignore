@@ -4,6 +4,7 @@
 .env.*
 
 # --- PYTHON BACKEND ---
+backend/agents/agent_cache/
 backend/.env/
 backend/.env.*
 backend/venv/
